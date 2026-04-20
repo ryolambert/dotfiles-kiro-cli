@@ -1,6 +1,6 @@
 # Kiro CLI 設定檔
 
-基於 Kiro CLI 的多代理 AI 編碼協調器。包含 15 個專業代理、6 個自訂 Hook、24 個技能，以及程式碼生成設定管線。
+基於 Kiro CLI 的多代理 AI 編碼協調器。包含 17 個專業代理、10 個自訂 Hook、26 個技能，以及程式碼生成設定管線。
 
 所有代理設定（`.json`）皆由 `generate-configs.sh` 在執行時產生，不納入版本控制。Prompt 檔案（`.md`）與 Hook 腳本（`.sh`）才是 Git 追蹤的真實來源。
 
@@ -13,6 +13,8 @@
 - [代理列表](#代理列表)
 - [Hooks](#hooks)
 - [RTK 整合](#rtk-整合)
+- [ICM 整合](#icm-整合)
+- [mcp2cli 整合](#mcp2cli-整合)
 - [技能](#技能)
 - [cmux 整合](#cmux-整合)
 - [MCP 伺服器](#mcp-伺服器)
@@ -31,9 +33,9 @@
   ▼
 code_supervisor（ctrl+a）── 協調器，僅持有 read / subagent / todo / thinking 工具
   │
-  ├─ 10 個 leaf agent（各自擁有完整工具鏈）
+  ├─ 11 個 leaf agent（各自擁有完整工具鏈）
   │   developer · reviewer · designer · explorer · simplifier
-  │   tester · debugger · planner · librarian · researcher
+  │   tester · debugger · planner · librarian · researcher · mcp2cli
   │
   └─ 4 個 council agent（唯讀，用於多模型共識）
       councillor-a (Opus 4.6) · councillor-b (GLM-5) · councillor-c (Opus 4.5)
@@ -60,6 +62,8 @@ code_supervisor（ctrl+a）── 協調器，僅持有 read / subagent / todo /
 | Python 3（`uvx`） | Git MCP 伺服器 |
 | `EXA_API_KEY` 環境變數 | Exa 搜尋 API |
 | `rtk`（Rust Token Killer） | 用於 token 優化的 shell 指令執行。安裝來源：[rtk-ai/rtk](https://github.com/rtk-ai/rtk) |
+| `icm`（Infinite Context Memory） | AI 代理跨會話持久記憶。安裝來源：[rtk-ai/icm](https://github.com/rtk-ai/icm) |
+| `mcp2cli`（選用） | MCP 伺服器通用 CLI，支援 OpenAPI 與 GraphQL。安裝來源：[knowsuchagency/mcp2cli](https://github.com/knowsuchagency/mcp2cli) |
 | `cmux`（選用） | 原生 macOS 終端機，專為 AI 編碼代理設計。啟用桌面通知。安裝來源：[manaflow-ai/cmux](https://github.com/manaflow-ai/cmux) |
 
 ### 安裝步驟
@@ -97,6 +101,7 @@ kiro-cli chat
 | `planner` | 結構化執行計畫 | claude-opus-4.6 | `ctrl+p` | — |
 | `librarian` | 函式庫文件 & API 研究 | claude-opus-4.6 | `ctrl+l` | context7, exa, github-grep |
 | `researcher` | 學術論文搜尋 & 分析 | claude-opus-4.6 | `ctrl+shift+r` | exa |
+| `mcp2cli` | MCP 伺服器管理 & 遷移 | claude-opus-4.6 | `ctrl+shift+m` | — |
 
 ### 協調器
 
@@ -121,7 +126,7 @@ Council 流程：三位顧問各自獨立分析同一問題，`council-master` �
 
 ## Hooks
 
-本設定使用 6 個自訂 Hook，透過不同觸發時機注入行為：
+本設定使用 10 個自訂 Hook，透過不同觸發時機注入行為：
 
 | Hook | 觸發時機 | 適用範圍 | 說明 |
 |------|----------|----------|------|
@@ -129,6 +134,10 @@ Council 流程：三位顧問各自獨立分析同一問題，`council-master` �
 | `rtk-rules.sh` | `agentSpawn` | 大部分 leaf agent | 啟動時注入 RTK 使用說明（加 `rtk` 前綴） |
 | `caveman.sh` | `agentSpawn` | 所有代理 | 注入原始人說話風格 |
 | `locale.sh` | `agentSpawn` | 所有代理 | 注入繁體中文語系指令 |
+| `icm-start.sh` | `agentSpawn` | 所有代理 | 會話啟動時注入 ICM 關鍵/重要記憶（~500 tokens） |
+| `icm-post.sh` | `postToolUse` | 所有代理 | 每 N 次工具呼叫後自動從輸出中提取事實 |
+| `icm-compact.sh` | `preCompact` | 所有代理 | 在上下文壓縮前提取記憶 |
+| `icm-prompt.sh` | `userPromptSubmit` | 所有代理 | 每次使用者提示時注入回憶的上下文 |
 | `phase-reminder.sh` | `userPromptSubmit` | `code_supervisor` | 提醒協調器遵循 6 階段工作流程 |
 | `cmux-notify.sh` | `stop` | `code_supervisor` | 回應完成時透過 cmux 發送桌面通知 |
 
@@ -140,6 +149,7 @@ Council 流程：三位顧問各自獨立分析同一問題，`council-master` �
 - `inject_rtk_spawn_hook` — 加入 `agentSpawn` hook（RTK 規則）
 - `inject_caveman_hook` — 加入 `agentSpawn` hook（原始人風格）
 - `inject_locale_hook` — 加入 `agentSpawn` hook（繁體中文）
+- `inject_icm_hooks` — 加入 4 個 ICM hook（`agentSpawn`、`postToolUse`、`preCompact`、`userPromptSubmit`）
 
 注意：`planner`、`code_supervisor`、`librarian`、`researcher` 及所有 council agent 不注入 RTK hook（因為它們不直接執行 shell 指令或有其他考量）。
 
@@ -166,6 +176,70 @@ RTK（Rust Token Killer）是一個 CLI 代理工具，能壓縮 shell 指令的
 
 ---
 
+## ICM 整合
+
+[ICM（Infinite Context Memory）](https://github.com/rtk-ai/icm) 為 AI 代理提供跨會話的持久記憶 — 支援時序衰減、知識圖譜和混合搜尋。
+
+### ICM 提供的功能
+
+- **情節記憶（Memories）** — 儲存/召回決策、錯誤、偏好，依重要性衰減
+- **語意記憶（Memoirs）** — 永久知識圖譜，概念間以型別化關係連結
+- **回饋迴圈（Feedback）** — 記錄 AI 預測錯誤時的修正
+- **混合搜尋** — FTS5 BM25 (30%) + 餘弦相似度 (70%)
+- **自動提取** — 基於規則的事實提取，零 LLM 成本
+
+### 安裝
+
+```bash
+# Homebrew（macOS / Linux）
+brew tap rtk-ai/tap && brew install icm
+
+# 快速安裝
+curl -fsSL https://raw.githubusercontent.com/rtk-ai/icm/main/install.sh | sh
+```
+
+### 整合方式
+
+ICM 透過 **MCP 伺服器** 和 **Hook** 雙重整合：
+
+1. **MCP 伺服器**（`icm serve --compact`）— 加入 `mcp.json`，提供 27 個記憶儲存/召回/知識圖譜/回饋/逐字稿工具
+2. **4 個 Hook** — 自動注入所有代理：
+   - `icm-start.sh`（`agentSpawn`）— 會話啟動時注入關鍵/重要記憶
+   - `icm-post.sh`（`postToolUse`）— 從工具輸出中提取事實
+   - `icm-compact.sh`（`preCompact`）— 上下文壓縮前提取記憶
+   - `icm-prompt.sh`（`userPromptSubmit`）— 每次提示時注入回憶的上下文
+3. **技能**（`icm-memory`）— 提供 `/recall` 和 `/remember` 使用指引
+
+所有 Hook 均包含優雅降級 — 若 `icm` 未安裝則靜默跳過。
+
+---
+
+## mcp2cli 整合
+
+[mcp2cli](https://github.com/knowsuchagency/mcp2cli) 可將任何 MCP 伺服器、OpenAPI 規格或 GraphQL 端點即時轉換為 CLI — 零程式碼生成，節省 96–99% 的工具 schema token 消耗。
+
+### 安裝
+
+```bash
+# 直接執行無需安裝
+uvx mcp2cli --help
+
+# 或全域安裝
+uv tool install mcp2cli
+```
+
+### 整合方式
+
+專用的 **mcp2cli 代理**（`ctrl+shift+m`）負責 MCP 伺服器管理：
+
+- **探索** 任何 MCP 伺服器提供的工具（`mcp2cli --mcp <url> --list`）
+- **測試** MCP 工具，在正式設定前驗證功能
+- **遷移** 其他 AI 工具的 MCP 設定（Claude Desktop、Cursor、Copilot、VS Code 等）
+- **烘焙** 常用連線為具名捷徑（`mcp2cli bake create`）
+- **稽核** 現有 MCP 設定中的可用/停用工具
+
+---
+
 ## 技能
 
 ### 本地技能
@@ -177,6 +251,8 @@ RTK（Rust Token Killer）是一個 CLI 代理工具，能壓縮 shell 指令的
 | `simplifier` | 程式碼精煉與簡化指引 |
 | `get-code-context-exa` | 透過 Exa 搜尋程式碼範例與文件 |
 | `web-search-advanced-research-paper-exa` | 透過 Exa 搜尋學術論文 |
+| `icm-memory` | AI 記憶召回與儲存 — `/recall` 搜尋過去決策，`/remember` 儲存重要事實 |
+| `mcp2cli` | MCP 伺服器通用 CLI — 探索、測試、遷移和管理 MCP 伺服器 |
 
 ### Caveman
 
@@ -226,6 +302,7 @@ sudo ln -sf "/Applications/cmux.app/Contents/Resources/bin/cmux" /usr/local/bin/
 | `figma-developer-mcp` | stdio | `npx -y figma-developer-mcp --stdio` | Figma 設計擷取 |
 | [`exa`](https://github.com/exa-labs/exa-mcp-server) | remote | `https://mcp.exa.ai/mcp?exaApiKey=...` | 網路搜尋 & 學術論文 |
 | `github-grep` | remote | `https://mcp.grep.app` | GitHub 程式碼搜尋 |
+| [`icm`](https://github.com/rtk-ai/icm) | stdio | `icm serve --compact` | AI 持久記憶（27 個 MCP 工具） |
 | `chrome-devtools` | stdio | `npx -y chrome-devtools-mcp@latest` | 瀏覽器除錯（預設停用） |
 
 各代理僅掛載所需的 MCP 伺服器，而非全部共用。例如 `designer` 只掛載 `figma-developer-mcp`，`researcher` 只掛載 `exa`。
