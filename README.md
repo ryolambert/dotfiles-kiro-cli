@@ -1,6 +1,6 @@
 # Kiro CLI Configuration
 
-Multi-agent AI coding orchestrator powered by Kiro CLI. Features 16 specialized agents, 6 custom hooks, 24 skills, and a code-gen config pipeline.
+Multi-agent AI coding orchestrator powered by Kiro CLI. Features 17 specialized agents, 10 custom hooks, 26 skills, and a code-gen config pipeline.
 
 ## Architecture Overview
 
@@ -13,13 +13,13 @@ Multi-agent AI coding orchestrator powered by Kiro CLI. Features 16 specialized 
             ┌────────────────────┼────────────────────┐
             ▼                    ▼                     ▼
    ┌─────────────────┐  ┌──────────────┐  ┌────────────────────┐
-   │   10 leaf agents │  │  4 council   │  │  .plan/ folder     │
+   │  11 leaf agents  │  │  4 council   │  │  .plan/ folder     │
    │   (specialists)  │  │  agents      │  │  (inter-agent IPC) │
    └─────────────────┘  └──────────────┘  └────────────────────┘
 ```
 
 - `code_supervisor` is the orchestrator — dispatches to leaf agents via the `subagent` tool
-- 10 leaf agents: developer, reviewer, designer, explorer, simplifier, tester, debugger, planner, librarian, researcher
+- 11 leaf agents: developer, reviewer, designer, explorer, simplifier, tester, debugger, planner, librarian, researcher, mcp2cli
 - 4 council agents: councillor-a, councillor-b, councillor-c, council-master (multi-model consensus)
 - All agent prompts use XML tag format (`<Role>`, `<Agents>`, `<Workflow>`, etc.)
 
@@ -31,6 +31,8 @@ Multi-agent AI coding orchestrator powered by Kiro CLI. Features 16 specialized 
 - Node.js (for `npx` — MCP servers)
 - Python 3 (for `uvx` — MCP servers)
 - `rtk` (Rust Token Killer) — required for token-optimized shell command execution. Install from [https://github.com/rtk-ai/rtk](https://github.com/rtk-ai/rtk)
+- `icm` (Infinite Context Memory) — persistent AI memory across sessions. Install from [https://github.com/rtk-ai/icm](https://github.com/rtk-ai/icm)
+- `mcp2cli` (optional) — universal CLI for MCP servers, OpenAPI specs, and GraphQL endpoints. Install from [https://github.com/knowsuchagency/mcp2cli](https://github.com/knowsuchagency/mcp2cli)
 - `cmux` (optional) — native macOS terminal for AI coding agents. Enables desktop notifications. Install from [https://github.com/manaflow-ai/cmux](https://github.com/manaflow-ai/cmux)
 - `EXA_API_KEY` environment variable (for Exa search)
 
@@ -48,8 +50,6 @@ chmod +x ~/.kiro/generate-configs.sh
 kiro-cli chat   # defaults to code_supervisor agent
 ```
 
-**Customization:** To change the response language, edit `hooks/locale.sh`. The default is set to Traditional Chinese (繁體中文).
-
 ## Agents
 
 ### Leaf Agents
@@ -66,6 +66,7 @@ kiro-cli chat   # defaults to code_supervisor agent
 | planner | Execution plans | claude-opus-4.6 | `ctrl+p` |
 | librarian | Library docs research | claude-opus-4.6 | `ctrl+l` |
 | researcher | Academic paper search | claude-opus-4.6 | `ctrl+shift+r` |
+| mcp2cli | MCP server management | claude-opus-4.6 | `ctrl+shift+m` |
 
 ### Orchestrator
 
@@ -84,14 +85,17 @@ kiro-cli chat   # defaults to code_supervisor agent
 
 ## Hooks
 
-6 hooks total — 4 base hooks for all agents + 2 supervisor-only hooks.
+10 hooks total — 4 base hooks for all agents + 4 ICM memory hooks for all agents + 2 supervisor-only hooks.
 
 | Hook | Trigger | Scope | Description |
 |------|---------|-------|-------------|
 | `rtk-rewrite.sh` | `preToolUse` (shell) | Most agents | Intercepts shell commands, rewrites via RTK for token efficiency. Blocks original and suggests rtk-prefixed version. |
 | `rtk-rules.sh` | `agentSpawn` | Most agents | Injects RTK usage instructions into agent context at startup |
 | `caveman.sh` | `agentSpawn` | All agents | Injects caveman speech style instruction |
-| `locale.sh` | `agentSpawn` | All agents | Injects Traditional Chinese (繁體中文) locale instruction |
+| `icm-start.sh` | `agentSpawn` | All agents | Injects critical/high ICM memories at session start (~500 tokens) |
+| `icm-post.sh` | `postToolUse` | All agents | Extracts facts from tool output every N calls (auto-extraction) |
+| `icm-compact.sh` | `preCompact` | All agents | Extracts memories from transcript before context compression |
+| `icm-prompt.sh` | `userPromptSubmit` | All agents | Injects recalled ICM context at the start of each user prompt |
 | `phase-reminder.sh` | `userPromptSubmit` | code_supervisor | Reminds orchestrator of 6-phase workflow on every prompt |
 | `cmux-notify.sh` | `stop` | code_supervisor | Desktop notification via cmux when response completes |
 
@@ -104,6 +108,74 @@ RTK (Rust Token Killer) is a CLI proxy that optimizes shell command output for t
 
 > **Important:** `agentSpawn` hooks do NOT fire for subagent sessions, but `preToolUse` hooks DO. This is why both layers are needed.
 
+## ICM Integration
+
+[ICM (Infinite Context Memory)](https://github.com/rtk-ai/icm) gives agents persistent memory across sessions — not note-taking, real memory with temporal decay, knowledge graphs, and hybrid search.
+
+### What ICM Provides
+
+- **Episodic Memory** — Store/recall decisions, errors, preferences with importance-based decay
+- **Semantic Memory (Memoirs)** — Permanent knowledge graphs with typed relations
+- **Feedback Loop** — Record corrections when AI predictions are wrong
+- **Hybrid Search** — FTS5 BM25 (30%) + cosine similarity (70%) for accurate recall
+- **Auto-Extraction** — Rule-based fact extraction from tool output (zero LLM cost)
+
+### Install
+
+```bash
+# Homebrew (macOS / Linux)
+brew tap rtk-ai/tap && brew install icm
+
+# Quick install
+curl -fsSL https://raw.githubusercontent.com/rtk-ai/icm/main/install.sh | sh
+```
+
+### How It's Used Here
+
+ICM is integrated via both **MCP server** and **hooks**:
+
+1. **MCP Server** (`icm serve --compact`) — Added to `mcp.json`, provides 27 tools for memory store/recall/memoirs/feedback/transcripts
+2. **4 Hooks** — Automatically injected into all agents:
+   - `icm-start.sh` (`agentSpawn`) — Injects critical/high memories at session start (~500 tokens)
+   - `icm-post.sh` (`postToolUse`) — Extracts facts from tool output every N calls
+   - `icm-compact.sh` (`preCompact`) — Extracts memories before context compression
+   - `icm-prompt.sh` (`userPromptSubmit`) — Injects recalled context per user prompt
+3. **Skill** (`icm-memory`) — Provides `/recall` and `/remember` usage guidelines
+
+All hooks include graceful degradation — if `icm` is not installed, they silently exit.
+
+### Dashboard
+
+```bash
+icm dashboard    # Interactive TUI with 5 tabs: Overview, Topics, Memories, Health, Memoirs
+```
+
+## mcp2cli Integration
+
+[mcp2cli](https://github.com/knowsuchagency/mcp2cli) turns any MCP server, OpenAPI spec, or GraphQL endpoint into a CLI at runtime — zero codegen, saving 96–99% of tokens wasted on tool schemas.
+
+### Install
+
+```bash
+# Run directly without installing
+uvx mcp2cli --help
+
+# Or install globally
+uv tool install mcp2cli
+```
+
+### How It's Used Here
+
+A dedicated **mcp2cli agent** (`ctrl+shift+m`) handles MCP server management:
+
+- **Discover** tools on any MCP server (`mcp2cli --mcp <url> --list`)
+- **Test** MCP tools directly from CLI before configuring them
+- **Migrate** configs from other AI tools (Claude Desktop, Cursor, Copilot, VS Code)
+- **Bake** frequently used connections into named shortcuts (`mcp2cli bake create`)
+- **Audit** existing MCP setup for available/disabled tools
+
+The mcp2cli skill is also available to all agents for ad-hoc MCP discovery.
+
 ## Skills
 
 | Skill | Description |
@@ -113,6 +185,8 @@ RTK (Rust Token Killer) is a CLI proxy that optimizes shell command output for t
 | simplifier | Code refinement and complexity reduction |
 | get-code-context-exa | Code context search via Exa (GitHub, StackOverflow, docs) |
 | web-search-advanced-research-paper-exa | Academic paper search via Exa |
+| icm-memory | AI memory recall and storage via ICM — `/recall` to search past decisions, `/remember` to store facts |
+| mcp2cli | Universal MCP CLI — discover, test, migrate, and manage MCP servers |
 | [Caveman](https://github.com/juliusbrussee/caveman) | ~75% output token reduction via terse caveman-speak. 5 sub-skills (caveman, caveman-commit, caveman-compress, caveman-help, caveman-review). Intensity levels: `lite`, `full` (default), `ultra`. Also injected via `hooks/caveman.sh` for persistent caveman speech across all agents. |
 | [Grill Me](https://github.com/mattpocock/skills/blob/main/grill-me/SKILL.md) | Interview/stress-test skill — relentlessly grills you on plans and designs, walking each branch of the decision tree until reaching shared understanding |
 
@@ -152,6 +226,7 @@ The hook includes a guard clause (`cmux ping || exit 0`) so it silently does not
 | figma-developer-mcp | `npx figma-developer-mcp` | Figma design extraction |
 | [exa](https://github.com/exa-labs/exa-mcp-server) | Remote URL | Web search and research |
 | github-grep | Remote URL (`mcp.grep.app`) | GitHub code search |
+| [icm](https://github.com/rtk-ai/icm) | `icm serve --compact` | Persistent AI memory (27 MCP tools) |
 
 ## Configuration Pipeline
 

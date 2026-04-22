@@ -34,10 +34,29 @@ inject_caveman_hook() {
     "$f" > "${f}.tmp" && mv "${f}.tmp" "$f"
 }
 
-inject_locale_hook() {
+# --- ICM (Infinite Context Memory) hook injectors ---
+ICM_START_HOOK="$KIRO_DIR/hooks/icm-start.sh"
+ICM_POST_HOOK="$KIRO_DIR/hooks/icm-post.sh"
+ICM_COMPACT_HOOK="$KIRO_DIR/hooks/icm-compact.sh"
+ICM_PROMPT_HOOK="$KIRO_DIR/hooks/icm-prompt.sh"
+
+inject_icm_hooks() {
   local f="$1"
-  jq --arg hook "$KIRO_DIR/hooks/locale.sh" \
+  # agentSpawn: inject critical/high memories at session start
+  jq --arg hook "$ICM_START_HOOK" \
     '.hooks.agentSpawn = (.hooks.agentSpawn // []) + [{ command: $hook }]' \
+    "$f" > "${f}.tmp" && mv "${f}.tmp" "$f"
+  # postToolUse: extract facts from tool output
+  jq --arg hook "$ICM_POST_HOOK" \
+    '.hooks.postToolUse = (.hooks.postToolUse // []) + [{ command: $hook }]' \
+    "$f" > "${f}.tmp" && mv "${f}.tmp" "$f"
+  # preCompact: extract memories before context compression
+  jq --arg hook "$ICM_COMPACT_HOOK" \
+    '.hooks.preCompact = (.hooks.preCompact // []) + [{ command: $hook }]' \
+    "$f" > "${f}.tmp" && mv "${f}.tmp" "$f"
+  # userPromptSubmit: inject recalled context per user prompt
+  jq --arg hook "$ICM_PROMPT_HOOK" \
+    '.hooks.userPromptSubmit = (.hooks.userPromptSubmit // []) + [{ command: $hook }]' \
     "$f" > "${f}.tmp" && mv "${f}.tmp" "$f"
 }
 
@@ -69,7 +88,7 @@ jq -n \
 inject_rtk_hook "$AGENTS_DIR/developer.json"
 inject_rtk_spawn_hook "$AGENTS_DIR/developer.json"
 inject_caveman_hook "$AGENTS_DIR/developer.json"
-inject_locale_hook "$AGENTS_DIR/developer.json"
+inject_icm_hooks "$AGENTS_DIR/developer.json"
 
 # --- reviewer ---
 jq -n \
@@ -95,7 +114,7 @@ jq -n \
 inject_rtk_hook "$AGENTS_DIR/reviewer.json"
 inject_rtk_spawn_hook "$AGENTS_DIR/reviewer.json"
 inject_caveman_hook "$AGENTS_DIR/reviewer.json"
-inject_locale_hook "$AGENTS_DIR/reviewer.json"
+inject_icm_hooks "$AGENTS_DIR/reviewer.json"
 
 # --- designer ---
 jq -n \
@@ -123,7 +142,7 @@ jq -n \
 inject_rtk_hook "$AGENTS_DIR/designer.json"
 inject_rtk_spawn_hook "$AGENTS_DIR/designer.json"
 inject_caveman_hook "$AGENTS_DIR/designer.json"
-inject_locale_hook "$AGENTS_DIR/designer.json"
+inject_icm_hooks "$AGENTS_DIR/designer.json"
 
 # --- explorer ---
 jq -n \
@@ -170,7 +189,7 @@ jq -n \
 inject_rtk_hook "$AGENTS_DIR/explorer.json"
 inject_rtk_spawn_hook "$AGENTS_DIR/explorer.json"
 inject_caveman_hook "$AGENTS_DIR/explorer.json"
-inject_locale_hook "$AGENTS_DIR/explorer.json"
+inject_icm_hooks "$AGENTS_DIR/explorer.json"
 
 # --- simplifier ---
 jq -n \
@@ -205,7 +224,7 @@ jq -n \
 inject_rtk_hook "$AGENTS_DIR/simplifier.json"
 inject_rtk_spawn_hook "$AGENTS_DIR/simplifier.json"
 inject_caveman_hook "$AGENTS_DIR/simplifier.json"
-inject_locale_hook "$AGENTS_DIR/simplifier.json"
+inject_icm_hooks "$AGENTS_DIR/simplifier.json"
 
 # --- tester ---
 jq -n \
@@ -231,7 +250,7 @@ jq -n \
 inject_rtk_hook "$AGENTS_DIR/tester.json"
 inject_rtk_spawn_hook "$AGENTS_DIR/tester.json"
 inject_caveman_hook "$AGENTS_DIR/tester.json"
-inject_locale_hook "$AGENTS_DIR/tester.json"
+inject_icm_hooks "$AGENTS_DIR/tester.json"
 
 # --- debugger ---
 jq -n \
@@ -255,7 +274,7 @@ jq -n \
 inject_rtk_hook "$AGENTS_DIR/debugger.json"
 inject_rtk_spawn_hook "$AGENTS_DIR/debugger.json"
 inject_caveman_hook "$AGENTS_DIR/debugger.json"
-inject_locale_hook "$AGENTS_DIR/debugger.json"
+inject_icm_hooks "$AGENTS_DIR/debugger.json"
 
 # --- planner ---
 jq -n \
@@ -286,7 +305,7 @@ jq -n \
     prompt: $prompt
   }' > "$AGENTS_DIR/planner.json"
 inject_caveman_hook "$AGENTS_DIR/planner.json"
-inject_locale_hook "$AGENTS_DIR/planner.json"
+inject_icm_hooks "$AGENTS_DIR/planner.json"
 
 # --- code_supervisor ---
 jq -n \
@@ -309,8 +328,8 @@ jq -n \
         autoAllowReadonly: true
       },
       subagent: {
-        availableAgents: ["planner", "designer", "developer", "explorer", "reviewer", "simplifier", "tester", "debugger", "librarian", "councillor-a", "councillor-b", "councillor-c", "council-master"],
-        trustedAgents: ["planner", "designer", "developer", "explorer", "reviewer", "simplifier", "tester", "debugger", "librarian", "councillor-a", "councillor-b", "councillor-c", "council-master"]
+        availableAgents: ["planner", "designer", "developer", "explorer", "reviewer", "simplifier", "tester", "debugger", "librarian", "mcp2cli", "councillor-a", "councillor-b", "councillor-c", "council-master"],
+        trustedAgents: ["planner", "designer", "developer", "explorer", "reviewer", "simplifier", "tester", "debugger", "librarian", "mcp2cli", "councillor-a", "councillor-b", "councillor-c", "council-master"]
       }
     },
     resources: [
@@ -343,7 +362,7 @@ jq -n \
     }
   }' > "$AGENTS_DIR/code_supervisor.json"
 inject_caveman_hook "$AGENTS_DIR/code_supervisor.json"
-inject_locale_hook "$AGENTS_DIR/code_supervisor.json"
+inject_icm_hooks "$AGENTS_DIR/code_supervisor.json"
 
 # --- librarian ---
 jq -n \
@@ -384,7 +403,7 @@ jq -n \
     prompt: $prompt
   }' > "$AGENTS_DIR/librarian.json"
 inject_caveman_hook "$AGENTS_DIR/librarian.json"
-inject_locale_hook "$AGENTS_DIR/librarian.json"
+inject_icm_hooks "$AGENTS_DIR/librarian.json"
 
 # --- researcher ---
 jq -n \
@@ -410,7 +429,7 @@ jq -n \
     prompt: $prompt
   }' > "$AGENTS_DIR/researcher.json"
 inject_caveman_hook "$AGENTS_DIR/researcher.json"
-inject_locale_hook "$AGENTS_DIR/researcher.json"
+inject_icm_hooks "$AGENTS_DIR/researcher.json"
 
 # --- councillor-a (Claude Opus) ---
 jq -n \
@@ -432,7 +451,7 @@ jq -n \
     prompt: $prompt
   }' > "$AGENTS_DIR/councillor-a.json"
 inject_caveman_hook "$AGENTS_DIR/councillor-a.json"
-inject_locale_hook "$AGENTS_DIR/councillor-a.json"
+inject_icm_hooks "$AGENTS_DIR/councillor-a.json"
 
 # --- councillor-b (Claude Sonnet) ---
 jq -n \
@@ -454,7 +473,7 @@ jq -n \
     prompt: $prompt
   }' > "$AGENTS_DIR/councillor-b.json"
 inject_caveman_hook "$AGENTS_DIR/councillor-b.json"
-inject_locale_hook "$AGENTS_DIR/councillor-b.json"
+inject_icm_hooks "$AGENTS_DIR/councillor-b.json"
 
 # --- councillor-c ---
 jq -n \
@@ -476,7 +495,7 @@ jq -n \
     prompt: $prompt
   }' > "$AGENTS_DIR/councillor-c.json"
 inject_caveman_hook "$AGENTS_DIR/councillor-c.json"
-inject_locale_hook "$AGENTS_DIR/councillor-c.json"
+inject_icm_hooks "$AGENTS_DIR/councillor-c.json"
 
 # --- council-master ---
 jq -n \
@@ -495,7 +514,32 @@ jq -n \
     prompt: $prompt
   }' > "$AGENTS_DIR/council-master.json"
 inject_caveman_hook "$AGENTS_DIR/council-master.json"
-inject_locale_hook "$AGENTS_DIR/council-master.json"
+inject_icm_hooks "$AGENTS_DIR/council-master.json"
+
+# --- mcp2cli ---
+jq -n \
+  --arg prompt "file://${HOME_DIR}/.kiro/agents/mcp2cli.md" \
+  --arg skills "skill://${HOME_DIR}/.kiro/skills/**/SKILL.md" \
+  --arg mcp2cli_skill "skill://${HOME_DIR}/.kiro/skills/mcp2cli/SKILL.md" \
+  '{
+    name: "mcp2cli",
+    description: "MCP Server Management Agent — discovers, tests, migrates, and configures MCP servers using mcp2cli",
+    model: "claude-opus-4.6",
+    tools: ["@builtin", "*"],
+    allowedTools: ["@builtin", "fs_*", "execute_bash"],
+    useLegacyMcpJson: false,
+    keyboardShortcut: "ctrl+shift+m",
+    welcomeMessage: "What MCP server do you need to discover, test, or migrate?",
+    resources: [
+      $mcp2cli_skill,
+      "skill://.kiro/skills/*/SKILL.md",
+      "file://.kiro/steering/*.md",
+      $skills
+    ],
+    prompt: $prompt
+  }' > "$AGENTS_DIR/mcp2cli.json"
+inject_caveman_hook "$AGENTS_DIR/mcp2cli.json"
+inject_icm_hooks "$AGENTS_DIR/mcp2cli.json"
 
 # --- mcp.json ---
 jq -n \
@@ -507,7 +551,8 @@ jq -n \
       "chrome-devtools": { command: "npx", args: ["-y", "chrome-devtools-mcp@latest"], autoApprove: ["take_screenshot", "list_pages"], disabled: true },
       "figma-developer-mcp": { command: "npx", args: ["-y", "figma-developer-mcp", "--stdio"] },
       exa: { url: ("https://mcp.exa.ai/mcp?exaApiKey=" + $exa_key), autoApprove: ["web_search_exa"] },
-      "github-grep": { url: "https://mcp.grep.app" }
+      "github-grep": { url: "https://mcp.grep.app" },
+      icm: { command: "icm", args: ["serve", "--compact"] }
     }
   }' > "$KIRO_DIR/settings/mcp.json"
 
@@ -515,13 +560,13 @@ jq -n \
 echo ""
 echo "Kiro configuration complete:"
 echo "  Agents:"
-for f in developer reviewer designer explorer simplifier tester debugger planner code_supervisor librarian researcher councillor-a councillor-b councillor-c council-master; do
+for f in developer reviewer designer explorer simplifier tester debugger planner code_supervisor librarian researcher mcp2cli councillor-a councillor-b councillor-c council-master; do
   echo "    ✓ $AGENTS_DIR/$f.json"
 done
 echo "  Settings:"
 echo "    ✓ $KIRO_DIR/settings/mcp.json"
 echo "  Hooks (managed separately in hooks/):"
-for f in phase-reminder caveman locale rtk-rewrite rtk-rules cmux-notify; do
+for f in phase-reminder caveman rtk-rewrite rtk-rules cmux-notify icm-start icm-post icm-compact icm-prompt; do
   if [ -f "$KIRO_DIR/hooks/$f.sh" ]; then
     echo "    ✓ $KIRO_DIR/hooks/$f.sh"
   else
@@ -530,4 +575,3 @@ for f in phase-reminder caveman locale rtk-rewrite rtk-rules cmux-notify; do
 done
 echo ""
 echo "Note: .md prompt files and SKILL.md files are NOT generated by this script."
-"
