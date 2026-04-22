@@ -34,13 +34,6 @@ inject_caveman_hook() {
     "$f" > "${f}.tmp" && mv "${f}.tmp" "$f"
 }
 
-inject_locale_hook() {
-  local f="$1"
-  jq --arg hook "$KIRO_DIR/hooks/locale.sh" \
-    '.hooks.agentSpawn = (.hooks.agentSpawn // []) + [{ command: $hook }]' \
-    "$f" > "${f}.tmp" && mv "${f}.tmp" "$f"
-}
-
 # --- ICM (Infinite Context Memory) hook injectors ---
 ICM_START_HOOK="$KIRO_DIR/hooks/icm-start.sh"
 ICM_POST_HOOK="$KIRO_DIR/hooks/icm-post.sh"
@@ -95,7 +88,6 @@ jq -n \
 inject_rtk_hook "$AGENTS_DIR/developer.json"
 inject_rtk_spawn_hook "$AGENTS_DIR/developer.json"
 inject_caveman_hook "$AGENTS_DIR/developer.json"
-inject_locale_hook "$AGENTS_DIR/developer.json"
 inject_icm_hooks "$AGENTS_DIR/developer.json"
 
 # --- reviewer ---
@@ -122,7 +114,6 @@ jq -n \
 inject_rtk_hook "$AGENTS_DIR/reviewer.json"
 inject_rtk_spawn_hook "$AGENTS_DIR/reviewer.json"
 inject_caveman_hook "$AGENTS_DIR/reviewer.json"
-inject_locale_hook "$AGENTS_DIR/reviewer.json"
 inject_icm_hooks "$AGENTS_DIR/reviewer.json"
 
 # --- designer ---
@@ -151,7 +142,6 @@ jq -n \
 inject_rtk_hook "$AGENTS_DIR/designer.json"
 inject_rtk_spawn_hook "$AGENTS_DIR/designer.json"
 inject_caveman_hook "$AGENTS_DIR/designer.json"
-inject_locale_hook "$AGENTS_DIR/designer.json"
 inject_icm_hooks "$AGENTS_DIR/designer.json"
 
 # --- explorer ---
@@ -199,7 +189,6 @@ jq -n \
 inject_rtk_hook "$AGENTS_DIR/explorer.json"
 inject_rtk_spawn_hook "$AGENTS_DIR/explorer.json"
 inject_caveman_hook "$AGENTS_DIR/explorer.json"
-inject_locale_hook "$AGENTS_DIR/explorer.json"
 inject_icm_hooks "$AGENTS_DIR/explorer.json"
 
 # --- simplifier ---
@@ -235,7 +224,6 @@ jq -n \
 inject_rtk_hook "$AGENTS_DIR/simplifier.json"
 inject_rtk_spawn_hook "$AGENTS_DIR/simplifier.json"
 inject_caveman_hook "$AGENTS_DIR/simplifier.json"
-inject_locale_hook "$AGENTS_DIR/simplifier.json"
 inject_icm_hooks "$AGENTS_DIR/simplifier.json"
 
 # --- tester ---
@@ -262,7 +250,6 @@ jq -n \
 inject_rtk_hook "$AGENTS_DIR/tester.json"
 inject_rtk_spawn_hook "$AGENTS_DIR/tester.json"
 inject_caveman_hook "$AGENTS_DIR/tester.json"
-inject_locale_hook "$AGENTS_DIR/tester.json"
 inject_icm_hooks "$AGENTS_DIR/tester.json"
 
 # --- debugger ---
@@ -287,7 +274,6 @@ jq -n \
 inject_rtk_hook "$AGENTS_DIR/debugger.json"
 inject_rtk_spawn_hook "$AGENTS_DIR/debugger.json"
 inject_caveman_hook "$AGENTS_DIR/debugger.json"
-inject_locale_hook "$AGENTS_DIR/debugger.json"
 inject_icm_hooks "$AGENTS_DIR/debugger.json"
 
 # --- planner ---
@@ -319,7 +305,6 @@ jq -n \
     prompt: $prompt
   }' > "$AGENTS_DIR/planner.json"
 inject_caveman_hook "$AGENTS_DIR/planner.json"
-inject_locale_hook "$AGENTS_DIR/planner.json"
 inject_icm_hooks "$AGENTS_DIR/planner.json"
 
 # --- code_supervisor ---
@@ -377,7 +362,6 @@ jq -n \
     }
   }' > "$AGENTS_DIR/code_supervisor.json"
 inject_caveman_hook "$AGENTS_DIR/code_supervisor.json"
-inject_locale_hook "$AGENTS_DIR/code_supervisor.json"
 inject_icm_hooks "$AGENTS_DIR/code_supervisor.json"
 
 # --- librarian ---
@@ -419,7 +403,6 @@ jq -n \
     prompt: $prompt
   }' > "$AGENTS_DIR/librarian.json"
 inject_caveman_hook "$AGENTS_DIR/librarian.json"
-inject_locale_hook "$AGENTS_DIR/librarian.json"
 inject_icm_hooks "$AGENTS_DIR/librarian.json"
 
 # --- researcher ---
@@ -446,7 +429,6 @@ jq -n \
     prompt: $prompt
   }' > "$AGENTS_DIR/researcher.json"
 inject_caveman_hook "$AGENTS_DIR/researcher.json"
-inject_locale_hook "$AGENTS_DIR/researcher.json"
 inject_icm_hooks "$AGENTS_DIR/researcher.json"
 
 # --- councillor-a (Claude Opus) ---
@@ -469,7 +451,6 @@ jq -n \
     prompt: $prompt
   }' > "$AGENTS_DIR/councillor-a.json"
 inject_caveman_hook "$AGENTS_DIR/councillor-a.json"
-inject_locale_hook "$AGENTS_DIR/councillor-a.json"
 inject_icm_hooks "$AGENTS_DIR/councillor-a.json"
 
 # --- councillor-b (Claude Sonnet) ---
@@ -492,7 +473,6 @@ jq -n \
     prompt: $prompt
   }' > "$AGENTS_DIR/councillor-b.json"
 inject_caveman_hook "$AGENTS_DIR/councillor-b.json"
-inject_locale_hook "$AGENTS_DIR/councillor-b.json"
 inject_icm_hooks "$AGENTS_DIR/councillor-b.json"
 
 # --- councillor-c ---
@@ -515,7 +495,6 @@ jq -n \
     prompt: $prompt
   }' > "$AGENTS_DIR/councillor-c.json"
 inject_caveman_hook "$AGENTS_DIR/councillor-c.json"
-inject_locale_hook "$AGENTS_DIR/councillor-c.json"
 inject_icm_hooks "$AGENTS_DIR/councillor-c.json"
 
 # --- council-master ---
@@ -535,7 +514,6 @@ jq -n \
     prompt: $prompt
   }' > "$AGENTS_DIR/council-master.json"
 inject_caveman_hook "$AGENTS_DIR/council-master.json"
-inject_locale_hook "$AGENTS_DIR/council-master.json"
 inject_icm_hooks "$AGENTS_DIR/council-master.json"
 
 # --- mcp2cli ---
@@ -561,7 +539,6 @@ jq -n \
     prompt: $prompt
   }' > "$AGENTS_DIR/mcp2cli.json"
 inject_caveman_hook "$AGENTS_DIR/mcp2cli.json"
-inject_locale_hook "$AGENTS_DIR/mcp2cli.json"
 inject_icm_hooks "$AGENTS_DIR/mcp2cli.json"
 
 # --- mcp.json ---
@@ -589,7 +566,7 @@ done
 echo "  Settings:"
 echo "    ✓ $KIRO_DIR/settings/mcp.json"
 echo "  Hooks (managed separately in hooks/):"
-for f in phase-reminder caveman locale rtk-rewrite rtk-rules cmux-notify icm-start icm-post icm-compact icm-prompt; do
+for f in phase-reminder caveman rtk-rewrite rtk-rules cmux-notify icm-start icm-post icm-compact icm-prompt; do
   if [ -f "$KIRO_DIR/hooks/$f.sh" ]; then
     echo "    ✓ $KIRO_DIR/hooks/$f.sh"
   else

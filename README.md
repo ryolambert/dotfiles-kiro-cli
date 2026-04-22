@@ -50,8 +50,6 @@ chmod +x ~/.kiro/generate-configs.sh
 kiro-cli chat   # defaults to code_supervisor agent
 ```
 
-**Customization:** To change the response language, edit `hooks/locale.sh`. The default is set to Traditional Chinese (繁體中文).
-
 ## Agents
 
 ### Leaf Agents
@@ -94,7 +92,6 @@ kiro-cli chat   # defaults to code_supervisor agent
 | `rtk-rewrite.sh` | `preToolUse` (shell) | Most agents | Intercepts shell commands, rewrites via RTK for token efficiency. Blocks original and suggests rtk-prefixed version. |
 | `rtk-rules.sh` | `agentSpawn` | Most agents | Injects RTK usage instructions into agent context at startup |
 | `caveman.sh` | `agentSpawn` | All agents | Injects caveman speech style instruction |
-| `locale.sh` | `agentSpawn` | All agents | Injects Traditional Chinese (繁體中文) locale instruction |
 | `icm-start.sh` | `agentSpawn` | All agents | Injects critical/high ICM memories at session start (~500 tokens) |
 | `icm-post.sh` | `postToolUse` | All agents | Extracts facts from tool output every N calls (auto-extraction) |
 | `icm-compact.sh` | `preCompact` | All agents | Extracts memories from transcript before context compression |
